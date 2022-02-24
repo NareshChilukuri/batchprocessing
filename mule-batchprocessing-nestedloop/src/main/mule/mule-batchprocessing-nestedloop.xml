@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="28182f55-c54f-4790-8cdd-3ae00f7e53be" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="8b707714-0b26-4e09-b3de-dcc57e98f3bf" file="dev-config.yaml" />
+	<flow name="mule-batchprocessing-nestedloopFlow" doc:id="76c090ae-a521-4bd7-be76-f081d152bea0" >
+		<http:listener doc:name="Listener" doc:id="35edf348-12b5-49dd-8cff-19dd79c8d03a" config-ref="HTTP_Listener_config" path="/nestedloop"/>
+		<set-payload value="#[p('Project.subscriberid') splitBy &quot;|&quot;]" doc:name="Set Payload" doc:id="b3446ebe-07f1-46fc-a454-4474f262b63d" />
+		<batch:job jobName="mule-batchprocessing-nestedloopBatch_Job" doc:id="a9160044-b838-424b-b17c-2b00f7139c15" maxFailedRecords="-1">
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="0b424cc3-27bc-458f-9de2-62d7060b02c6" >
+					<set-variable value='#[payload ++".Key"]' doc:name="Set Variable" doc:id="363e82bb-40a1-4ba9-b31f-d1770695bf67" variableName="keyinstance"/>
+					<ee:transform doc:name="Transform Message" doc:id="48720652-7d0a-4e84-a680-238542c0b84a" >
+						<ee:message >
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="keyvalue" ><![CDATA[%dw 2.0
+output application/json
+---
+"Project." ++ vars.keyinstance]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;p(vars.keyvalue)]' doc:name="Set Variable" doc:id="c8294b2f-6811-49ae-8d1e-611028bcf717" variableName="key"/>
+					<set-payload value='#[%dw 2.0&#10;output application/json&#10;---&#10;vars.key splitBy "|"]' doc:name="Set Payload" doc:id="4bfac5c0-9eef-43a2-b178-eb02bbbfa8c1" />
+				</batch:step>
+				<batch:step name="Batch_Step1" doc:id="eb584f6f-55c8-4e9c-ba55-d0b3f968e984" >
+					<flow-ref doc:name="Flow Reference" doc:id="bca917c3-3566-425b-93ed-fe79d7e72790" name="mule-batchprocessing-nestedloopSub_Flow" />
+				</batch:step>
+			</batch:process-records>
+		</batch:job>
+	</flow>
+	<sub-flow name="mule-batchprocessing-nestedloopSub_Flow" doc:id="b28585b0-37e4-4576-9092-b2028532ea14" >
+		<parallel-foreach doc:name="Parallel For Each" doc:id="9e657deb-f805-4d74-9db6-2c32c65d95dd" >
+			<logger level="INFO" doc:name="Logger" doc:id="17bec432-52e3-4553-824f-5b1e89985fee" message="#[payload]"/>
+		</parallel-foreach>
+	</sub-flow>
+</mule>
